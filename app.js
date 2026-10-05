@@ -10,7 +10,11 @@
   const STORAGE_KEYS = {
     PARTNERS: 'paidoff_partners_v1',
     TRANSACTIONS: 'paidoff_transactions_v1',
-    THEME: 'paidoff_theme'
+    THEME: 'paidoff_theme',
+    SYNC_TOKEN: 'paidoff_sync_token',
+    SYNC_GIST_ID: 'paidoff_sync_gist_id',
+    SYNC_AUTO: 'paidoff_sync_auto',
+    SYNC_LAST_TIME: 'paidoff_sync_last_time'
   };
 
   // State
@@ -129,6 +133,22 @@
     loadSampleDataBtn: document.getElementById('loadSampleDataBtn'),
     clearAllDataBtn: document.getElementById('clearAllDataBtn'),
     printStatementBtn: document.getElementById('printStatementBtn'),
+
+    // Cloud Sync
+    openSyncModalBtn: document.getElementById('openSyncModalBtn'),
+    syncModal: document.getElementById('syncModal'),
+    syncStatusDot: document.getElementById('syncStatusDot'),
+    syncStatusText: document.getElementById('syncStatusText'),
+    syncActiveBanner: document.getElementById('syncActiveBanner'),
+    syncGistDisplay: document.getElementById('syncGistDisplay'),
+    syncLastTimeDisplay: document.getElementById('syncLastTimeDisplay'),
+    syncTokenInput: document.getElementById('syncTokenInput'),
+    toggleTokenVisibilityBtn: document.getElementById('toggleTokenVisibilityBtn'),
+    syncGistIdInput: document.getElementById('syncGistIdInput'),
+    syncAutoCheckbox: document.getElementById('syncAutoCheckbox'),
+    syncDisconnectBtn: document.getElementById('syncDisconnectBtn'),
+    syncPullBtn: document.getElementById('syncPullBtn'),
+    syncSaveBtn: document.getElementById('syncSaveBtn'),
 
     // Modals
     openNewPartnerBtn: document.getElementById('openNewPartnerBtn'),
@@ -284,6 +304,7 @@
     try {
       localStorage.setItem(STORAGE_KEYS.PARTNERS, JSON.stringify(partners));
       localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
+      triggerDebouncedCloudSync();
     } catch (err) {
       console.error('Error saving state:', err);
       showToast('Failed to save to local storage. Storage might be full.', 'error');
@@ -1018,11 +1039,330 @@
   }
 
   /* ==========================================================================
+     GitHub Gist Cloud Sync Module
+     ========================================================================== */
+  let isSyncing = false;
+  let syncDebounceTimer = null;
+
+  function formatSyncTime(isoStr) {
+    if (!isoStr) return 'Just now';
+    try {
+      const d = new Date(isoStr);
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', ' + d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    } catch {
+      return 'Recently';
+    }
+  }
+
+  function updateSyncUIStatus(state = 'idle') {
+    const token = localStorage.getItem(STORAGE_KEYS.SYNC_TOKEN);
+    const gistId = localStorage.getItem(STORAGE_KEYS.SYNC_GIST_ID);
+    const lastTime = localStorage.getItem(STORAGE_KEYS.SYNC_LAST_TIME);
+
+    if (state === 'syncing') {
+      el.syncStatusDot.className = 'sync-dot dot-syncing';
+      el.syncStatusText.textContent = 'Syncing...';
+      return;
+    }
+
+    if (token && gistId) {
+      el.syncStatusDot.className = 'sync-dot dot-active';
+      el.syncStatusText.textContent = 'Cloud Synced';
+      el.syncActiveBanner.style.display = 'block';
+      el.syncGistDisplay.textContent = gistId.substring(0, 12) + '...';
+      el.syncGistDisplay.title = gistId;
+      el.syncLastTimeDisplay.textContent = `Last synced: ${formatSyncTime(lastTime)}`;
+      el.syncDisconnectBtn.style.display = 'inline-flex';
+      el.syncPullBtn.style.display = 'inline-flex';
+      el.syncSaveBtn.textContent = 'Push to Cloud';
+      el.syncTokenInput.value = token;
+      el.syncGistIdInput.value = gistId;
+    } else {
+      el.syncStatusDot.className = 'sync-dot dot-inactive';
+      el.syncStatusText.textContent = 'Cloud Sync';
+      el.syncActiveBanner.style.display = 'none';
+      el.syncDisconnectBtn.style.display = 'none';
+      el.syncPullBtn.style.display = 'none';
+      el.syncSaveBtn.textContent = 'Connect & Sync';
+    }
+  }
+
+  function toggleTokenVisibility() {
+    const isPass = el.syncTokenInput.type === 'password';
+    el.syncTokenInput.type = isPass ? 'text' : 'password';
+    el.toggleTokenVisibilityBtn.textContent = isPass ? 'Hide' : 'Show';
+  }
+
+  async function handleSyncSaveOrPush() {
+    const existingGist = localStorage.getItem(STORAGE_KEYS.SYNC_GIST_ID);
+    const token = el.syncTokenInput.value.trim() || localStorage.getItem(STORAGE_KEYS.SYNC_TOKEN);
+
+    if (existingGist && token) {
+      // Already connected, push latest
+      await pushToGist(false);
+    } else {
+      // Connect or create new
+      await createOrConnectGist();
+    }
+  }
+
+  async function createOrConnectGist() {
+    const token = el.syncTokenInput.value.trim();
+    const existingGistId = el.syncGistIdInput.value.trim();
+    const autoSync = el.syncAutoCheckbox.checked;
+
+    if (!token) {
+      showToast('Please enter your GitHub Personal Access Token', 'error');
+      return;
+    }
+
+    updateSyncUIStatus('syncing');
+
+    try {
+      if (existingGistId) {
+        // Connect to existing Gist
+        const res = await fetch(`https://api.github.com/gists/${existingGistId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+          }
+        });
+
+        if (!res.ok) {
+          throw new Error(`Failed to access Gist (HTTP ${res.status}). Verify your token and Gist ID.`);
+        }
+
+        const data = await res.json();
+        const fileKey = Object.keys(data.files || {}).find(k => k.endsWith('.json'));
+        if (fileKey && data.files[fileKey].content) {
+          const cloudData = JSON.parse(data.files[fileKey].content);
+          if (Array.isArray(cloudData.partners) && Array.isArray(cloudData.transactions)) {
+            if (confirm(`Connected to Cloud Gist! Found ${cloudData.partners.length} partners and ${cloudData.transactions.length} entries in cloud.\n\nLoad cloud ledger data onto this device?`)) {
+              partners = cloudData.partners;
+              transactions = cloudData.transactions;
+              saveState();
+              renderAll();
+            }
+          }
+        }
+
+        localStorage.setItem(STORAGE_KEYS.SYNC_TOKEN, token);
+        localStorage.setItem(STORAGE_KEYS.SYNC_GIST_ID, existingGistId);
+        localStorage.setItem(STORAGE_KEYS.SYNC_AUTO, autoSync ? 'true' : 'false');
+        localStorage.setItem(STORAGE_KEYS.SYNC_LAST_TIME, new Date().toISOString());
+
+        updateSyncUIStatus('idle');
+        closeModal(el.syncModal);
+        showToast('Connected to cloud Gist successfully!', 'success');
+      } else {
+        // Create new private Gist automatically
+        const payload = {
+          description: 'PaidOff Business Debt & Wholesaler Tracker (Private Cloud Ledger)',
+          public: false,
+          files: {
+            'paidoff-ledger-data.json': {
+              content: JSON.stringify({
+                app: 'PaidOff',
+                version: '1.0',
+                updatedAt: new Date().toISOString(),
+                partners,
+                transactions
+              }, null, 2)
+            }
+          }
+        };
+
+        const res = await fetch('https://api.github.com/gists', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github+json',
+            'Content-Type': 'application/json',
+            'X-GitHub-Api-Version': '2022-11-28'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(`GitHub error (${res.status}): ${errData.message || 'Check your token has "gist" scope'}`);
+        }
+
+        const newGist = await res.json();
+        localStorage.setItem(STORAGE_KEYS.SYNC_TOKEN, token);
+        localStorage.setItem(STORAGE_KEYS.SYNC_GIST_ID, newGist.id);
+        localStorage.setItem(STORAGE_KEYS.SYNC_AUTO, autoSync ? 'true' : 'false');
+        localStorage.setItem(STORAGE_KEYS.SYNC_LAST_TIME, new Date().toISOString());
+
+        updateSyncUIStatus('idle');
+        closeModal(el.syncModal);
+        showToast('Private Gist created! Multi-device sync is now active.', 'success');
+      }
+    } catch (err) {
+      console.error('Cloud Sync error:', err);
+      updateSyncUIStatus('idle');
+      showToast(err.message || 'Failed to connect to GitHub Gist', 'error');
+    }
+  }
+
+  async function pushToGist(silent = false) {
+    const token = localStorage.getItem(STORAGE_KEYS.SYNC_TOKEN);
+    const gistId = localStorage.getItem(STORAGE_KEYS.SYNC_GIST_ID);
+    if (!token || !gistId || isSyncing) return;
+
+    isSyncing = true;
+    updateSyncUIStatus('syncing');
+
+    try {
+      const payload = {
+        description: 'PaidOff Business Debt & Wholesaler Tracker (Private Cloud Ledger)',
+        files: {
+          'paidoff-ledger-data.json': {
+            content: JSON.stringify({
+              app: 'PaidOff',
+              version: '1.0',
+              updatedAt: new Date().toISOString(),
+              partners,
+              transactions
+            }, null, 2)
+          }
+        }
+      };
+
+      const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+          'X-GitHub-Api-Version': '2022-11-28'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        throw new Error(`Cloud sync error (${res.status})`);
+      }
+
+      localStorage.setItem(STORAGE_KEYS.SYNC_LAST_TIME, new Date().toISOString());
+      updateSyncUIStatus('idle');
+      if (!silent) {
+        showToast('Cloud sync complete! Ledger updated on GitHub.', 'success');
+      }
+    } catch (err) {
+      console.error('Error pushing to Gist:', err);
+      updateSyncUIStatus('idle');
+      if (!silent) {
+        showToast('Failed to sync to cloud: ' + err.message, 'error');
+      }
+    } finally {
+      isSyncing = false;
+    }
+  }
+
+  async function pullFromGist(promptConfirm = true) {
+    const token = localStorage.getItem(STORAGE_KEYS.SYNC_TOKEN);
+    const gistId = localStorage.getItem(STORAGE_KEYS.SYNC_GIST_ID);
+    if (!token || !gistId || isSyncing) return;
+
+    isSyncing = true;
+    updateSyncUIStatus('syncing');
+
+    try {
+      const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28'
+        }
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to fetch cloud Gist (${res.status})`);
+      }
+
+      const data = await res.json();
+      const fileKey = Object.keys(data.files || {}).find(k => k.endsWith('.json'));
+      if (!fileKey || !data.files[fileKey].content) {
+        throw new Error('No valid JSON ledger data found in this Gist.');
+      }
+
+      const cloudData = JSON.parse(data.files[fileKey].content);
+      if (!Array.isArray(cloudData.partners) || !Array.isArray(cloudData.transactions)) {
+        throw new Error('Invalid data format in cloud Gist.');
+      }
+
+      if (!promptConfirm || confirm(`Pull latest cloud data? This will update local balances with ${cloudData.partners.length} partners and ${cloudData.transactions.length} entries from GitHub.`)) {
+        partners = cloudData.partners;
+        transactions = cloudData.transactions;
+        saveState();
+        renderAll();
+        localStorage.setItem(STORAGE_KEYS.SYNC_LAST_TIME, new Date().toISOString());
+        showToast('Cloud ledger loaded successfully!', 'success');
+      }
+    } catch (err) {
+      console.error('Error pulling from Gist:', err);
+      showToast(err.message || 'Failed to pull cloud data', 'error');
+    } finally {
+      isSyncing = false;
+      updateSyncUIStatus('idle');
+    }
+  }
+
+  function disconnectSync() {
+    if (confirm('Disconnect GitHub Gist Cloud Sync? Your local ledger data will remain safe.')) {
+      localStorage.removeItem(STORAGE_KEYS.SYNC_TOKEN);
+      localStorage.removeItem(STORAGE_KEYS.SYNC_GIST_ID);
+      localStorage.removeItem(STORAGE_KEYS.SYNC_LAST_TIME);
+      el.syncTokenInput.value = '';
+      el.syncGistIdInput.value = '';
+      updateSyncUIStatus('idle');
+      closeModal(el.syncModal);
+      showToast('Cloud Sync disconnected. Working in local offline mode.', 'info');
+    }
+  }
+
+  function triggerDebouncedCloudSync() {
+    const token = localStorage.getItem(STORAGE_KEYS.SYNC_TOKEN);
+    const gistId = localStorage.getItem(STORAGE_KEYS.SYNC_GIST_ID);
+    const autoSync = localStorage.getItem(STORAGE_KEYS.SYNC_AUTO) !== 'false';
+
+    if (token && gistId && autoSync) {
+      if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+      syncDebounceTimer = setTimeout(() => {
+        pushToGist(true);
+      }, 1500);
+    }
+  }
+
+  function initCloudSync() {
+    const savedAuto = localStorage.getItem(STORAGE_KEYS.SYNC_AUTO);
+    if (savedAuto !== null) {
+      el.syncAutoCheckbox.checked = savedAuto === 'true';
+    }
+    updateSyncUIStatus('idle');
+  }
+
+  /* ==========================================================================
      Event Listeners Setup
      ========================================================================== */
   function setupEventListeners() {
     // Theme toggle
     el.themeToggleBtn.addEventListener('click', toggleTheme);
+
+    // Cloud Sync triggers
+    el.openSyncModalBtn.addEventListener('click', () => {
+      updateSyncUIStatus('idle');
+      openModal(el.syncModal);
+    });
+    el.toggleTokenVisibilityBtn.addEventListener('click', toggleTokenVisibility);
+    el.syncSaveBtn.addEventListener('click', handleSyncSaveOrPush);
+    el.syncPullBtn.addEventListener('click', () => pullFromGist(true));
+    el.syncDisconnectBtn.addEventListener('click', disconnectSync);
+    el.syncAutoCheckbox.addEventListener('change', (e) => {
+      localStorage.setItem(STORAGE_KEYS.SYNC_AUTO, e.target.checked ? 'true' : 'false');
+    });
 
     // Data dropdown
     el.dataMenuBtn.addEventListener('click', (e) => {
@@ -1054,10 +1394,12 @@
     });
 
     // Close on backdrop click
-    [el.partnerModal, el.transactionModal].forEach(modal => {
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal(modal);
-      });
+    [el.partnerModal, el.transactionModal, el.syncModal].forEach(modal => {
+      if (modal) {
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) closeModal(modal);
+        });
+      }
     });
 
     // Close on Escape key
@@ -1065,6 +1407,7 @@
       if (e.key === 'Escape') {
         closeModal(el.partnerModal);
         closeModal(el.transactionModal);
+        closeModal(el.syncModal);
         el.dataMenuDropdown.parentElement.classList.remove('open');
       }
     });
@@ -1092,6 +1435,7 @@
   function init() {
     initTheme();
     loadState();
+    initCloudSync();
     setupEventListeners();
     renderAll();
   }

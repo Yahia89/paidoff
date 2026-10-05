@@ -30,8 +30,9 @@ Built strictly with clean **HTML5, Vanilla CSS, and modern JavaScript**, with **
   - Search entries by description, invoice number, or partner name.
   - Badges for entry category (*Inventory*, *Wholesale Batch*, *Equipment*, *Bank Transfer*, *Check*).
 
-- **Data Privacy & Backup**:
-  - **Offline-First**: All data is automatically saved to browser `LocalStorage`.
+- **Data Privacy & Multi-Device Sync**:
+  - **100% Free Private Cloud Sync**: Seamlessly sync your data between phone, tablet, and computer using a secret GitHub Gist.
+  - **Offline-First**: All data is automatically saved to browser `LocalStorage` with zero cloud lock-in.
   - **JSON Backup & Restore**: Export and import full data snapshots anytime.
   - **CSV Export**: Export your complete transaction history to Excel or Google Sheets.
   - **Print / PDF Statement**: Clean print layout to print or save partner statements.

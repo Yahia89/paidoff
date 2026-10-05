@@ -48,6 +48,14 @@
           </svg>
         </button>
 
+        <button id="openSyncModalBtn" class="btn btn-secondary btn-sm sync-status-btn" title="Cloud Sync Settings">
+          <svg class="cloud-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+          </svg>
+          <span class="sync-dot dot-inactive" id="syncStatusDot"></span>
+          <span id="syncStatusText">Cloud Sync</span>
+        </button>
+
         <div class="dropdown">
           <button id="dataMenuBtn" class="btn btn-secondary btn-sm" aria-label="Data Options">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -470,6 +478,85 @@
           <button type="submit" class="btn btn-primary" id="saveTransactionBtn">Save Entry</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: GitHub Gist Cloud Sync -->
+  <div id="syncModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap: 0.65rem;">
+          <div class="sync-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+            </svg>
+          </div>
+          <div>
+            <h3 id="syncModalTitle">Cloud Sync (GitHub Gist)</h3>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0;">100% Free & Private Multi-Device Sync</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" data-close-modal="syncModal" aria-label="Close">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div id="syncActiveBanner" class="sync-status-banner" style="display: none;">
+          <div class="status-banner-content">
+            <span class="sync-badge-active">● Cloud Connected</span>
+            <div class="sync-meta">
+              <span id="syncGistLinkWrap">Gist: <code id="syncGistDisplay">—</code></span>
+              <span id="syncLastTimeDisplay">Last synced: Just now</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sync-explainer-card">
+          <p>
+            PaidOff connects directly to your personal GitHub account to save your ledger to a <strong>secret, private Gist</strong>. No server, zero costs, and only you have access.
+          </p>
+        </div>
+
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.4rem;">
+            <label for="syncTokenInput" style="margin-bottom:0;">GitHub Personal Access Token <span class="required">*</span></label>
+            <a href="https://github.com/settings/tokens/new?scopes=gist&description=PaidOff+Cloud+Sync" target="_blank" rel="noopener noreferrer" class="btn-link" style="font-size: 0.75rem; font-weight: 600;">
+              Generate Token ↗
+            </a>
+          </div>
+          <div class="input-with-action">
+            <input type="password" id="syncTokenInput" class="form-control" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+            <button type="button" id="toggleTokenVisibilityBtn" class="btn btn-ghost btn-xs" title="Show/Hide Token">Show</button>
+          </div>
+          <small class="form-hint">Stored strictly in your local browser. Requires only the <code>gist</code> permission.</small>
+        </div>
+
+        <div class="form-group">
+          <label for="syncGistIdInput">Gist ID (Auto-created or connect 2nd device)</label>
+          <input type="text" id="syncGistIdInput" class="form-control" placeholder="Leave blank to auto-create, or paste Gist ID to sync">
+          <small class="form-hint">To connect your phone or another laptop, paste the Gist ID created by your first device.</small>
+        </div>
+
+        <div class="form-group checkbox-group">
+          <label class="custom-checkbox-label">
+            <input type="checkbox" id="syncAutoCheckbox" checked>
+            <span>Automatically upload changes to your cloud Gist</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="justify-content: space-between;">
+        <button type="button" id="syncDisconnectBtn" class="btn btn-secondary btn-sm text-danger" style="display: none;">
+          Disconnect
+        </button>
+        <div style="display: flex; gap: 0.65rem; margin-left: auto;">
+          <button type="button" id="syncPullBtn" class="btn btn-secondary btn-sm" style="display: none;">
+            Pull from Cloud
+          </button>
+          <button type="button" id="syncSaveBtn" class="btn btn-primary btn-sm">
+            Connect & Sync
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
