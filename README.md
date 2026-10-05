@@ -53,20 +53,16 @@ Because PaidOff is a pure client-side application, you can simply:
 
 ---
 
-## 🌐 Deploying to GitHub Pages
+## 🌐 Automated GitHub Pages Deployment
 
-1. Push this repository to GitHub:
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit of PaidOff project"
-   git branch -M main
-   git remote add origin https://github.com/<your-username>/<your-repo-name>.git
-   git push -u origin main
-   ```
-2. In your GitHub repository:
-   - Go to **Settings** $\to$ **Pages**.
-   - Under **Build and deployment** $\to$ **Source**, choose **Deploy from a branch**.
-   - Select branch **`main`** and folder **`/ (root)`**, then click **Save**.
-3. In a few moments, GitHub Pages will provide your live URL: `https://<your-username>.github.io/<your-repo-name>/`.
-# paidoff
+An automated workflow is configured in [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
+
+Every time you push code to `master` (or `main`), GitHub Actions automatically builds and publishes the latest site to GitHub Pages.
+
+### One-Time Setup in GitHub:
+1. Go to your repository on GitHub: **`https://github.com/Yahia89/paidoff`**
+2. Click **Settings** (top tab) $\to$ **Pages** (in the left sidebar).
+3. Under **Build and deployment** $\to$ **Source**, select **GitHub Actions**.
+4. That's it! GitHub Actions will now automatically trigger on every push and deploy the site to:
+   👉 **`https://yahia89.github.io/paidoff/`**
+
