@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PaidOff — Business Debt & Wholesaler Payoff Tracker</title>
+  <meta name="description" content="A simple, elegant offline-first web application to track money owed to business partners and wholesalers, calculate repayments, and monitor payoff balances.">
+  
+  <!-- Modern Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="light">
+  <div class="app-layout">
+    
+    <!-- Top Navigation Bar -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">PaidOff</span>
+          <span class="brand-badge">Ledger</span>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <button id="themeToggleBtn" class="btn btn-icon" title="Toggle Theme" aria-label="Toggle Dark/Light Mode">
+          <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+
+        <div class="dropdown">
+          <button id="dataMenuBtn" class="btn btn-secondary btn-sm" aria-label="Data Options">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Backup & Data</span>
+          </button>
+          <div id="dataMenuDropdown" class="dropdown-content">
+            <button id="exportJsonBtn" class="dropdown-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export JSON Backup
+            </button>
+            <button id="exportCsvBtn" class="dropdown-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+              Export CSV Ledger
+            </button>
+            <label class="dropdown-item file-label">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Import JSON Backup
+              <input type="file" id="importJsonInput" accept=".json" style="display:none;">
+            </label>
+            <div class="dropdown-divider"></div>
+            <button id="loadSampleDataBtn" class="dropdown-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+              Load Sample Demo Data
+            </button>
+            <button id="clearAllDataBtn" class="dropdown-item text-danger">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              Clear All Data
+            </button>
+          </div>
+        </div>
+
+        <button id="openNewPartnerBtn" class="btn btn-secondary btn-sm">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="8.5" cy="7" r="4"></circle>
+            <line x1="20" y1="8" x2="20" y2="14"></line>
+            <line x1="23" y1="11" x2="17" y2="11"></line>
+          </svg>
+          <span>Add Partner</span>
+        </button>
+
+        <button id="openNewTransactionBtn" class="btn btn-primary btn-sm">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>Record Entry</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="main-content">
+      
+      <!-- Key Metric Overview Cards -->
+      <section class="metrics-grid">
+        <div class="metric-card metric-owed">
+          <div class="metric-header">
+            <span class="metric-title">Total Currently Owed</span>
+            <div class="metric-icon-wrap icon-rose">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+            </div>
+          </div>
+          <div class="metric-value" id="metricTotalOwed">$0.00</div>
+          <div class="metric-subtext">Remaining unpaid balance across all partners</div>
+        </div>
+
+        <div class="metric-card metric-paid">
+          <div class="metric-header">
+            <span class="metric-title">Total Paid Back</span>
+            <div class="metric-icon-wrap icon-emerald">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+          </div>
+          <div class="metric-value" id="metricTotalPaid">$0.00</div>
+          <div class="metric-subtext" id="metricPaybackRate">0% of total debts cleared</div>
+        </div>
+
+        <div class="metric-card metric-total">
+          <div class="metric-header">
+            <span class="metric-title">Total Incurred Debt</span>
+            <div class="metric-icon-wrap icon-blue">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="metric-value" id="metricTotalIncurred">$0.00</div>
+          <div class="metric-subtext" id="metricTransactionCount">0 ledger entries recorded</div>
+        </div>
+
+        <div class="metric-card metric-partners">
+          <div class="metric-header">
+            <span class="metric-title">Partners & Wholesalers</span>
+            <div class="metric-icon-wrap icon-amber">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="metric-value" id="metricPartnersCount">0</div>
+          <div class="metric-subtext" id="metricActiveOwedCount">0 with pending balance</div>
+        </div>
+      </section>
+
+      <!-- Payoff Quick Calculator Bar -->
+      <section class="calculator-panel">
+        <div class="calc-intro">
+          <div class="calc-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            Payoff Calculator
+          </div>
+          <h3>Plan or Simulate a Payback</h3>
+          <p>Select a partner, enter an amount you plan to pay, and see how much you will owe instantly.</p>
+        </div>
+
+        <div class="calc-form">
+          <div class="calc-field">
+            <label for="calcPartnerSelect">Partner / Wholesaler</label>
+            <select id="calcPartnerSelect" class="form-control">
+              <option value="">Choose partner...</option>
+            </select>
+          </div>
+
+          <div class="calc-field">
+            <label for="calcAmountInput">Payment Amount ($)</label>
+            <div class="input-with-action">
+              <input type="number" id="calcAmountInput" class="form-control" placeholder="0.00" step="0.01" min="0">
+              <button id="calcFullPayBtn" type="button" class="btn btn-ghost btn-xs" title="Set to remaining balance">Pay In Full</button>
+            </div>
+          </div>
+
+          <div class="calc-result-box" id="calcResultBox">
+            <div class="calc-stat">
+              <span class="calc-stat-label">Current Owed:</span>
+              <span class="calc-stat-val" id="calcCurrentOwed">$0.00</span>
+            </div>
+            <div class="calc-arrow">→</div>
+            <div class="calc-stat">
+              <span class="calc-stat-label">New Balance:</span>
+              <span class="calc-stat-val highlight" id="calcNewBalance">$0.00</span>
+            </div>
+          </div>
+
+          <div class="calc-actions">
+            <button id="calcRecordPaymentBtn" type="button" class="btn btn-emerald" disabled>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              Apply Payment
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Partners / Wholesalers Cards Section -->
+      <section class="partners-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Partners & Wholesalers</h2>
+            <p class="section-desc">Outstanding balance and repayment tracking per supplier</p>
+          </div>
+          <div class="section-actions">
+            <div class="search-input-wrap">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="partnerSearchInput" class="form-control form-control-sm" placeholder="Search partners...">
+            </div>
+          </div>
+        </div>
+
+        <div class="partners-grid" id="partnersGrid">
+          <!-- Dynamically populated -->
+        </div>
+      </section>
+
+      <!-- Detailed Transaction Ledger Section -->
+      <section class="ledger-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Transactions Ledger</h2>
+            <p class="section-desc">History of money owed and repayments made</p>
+          </div>
+
+          <div class="ledger-controls">
+            <!-- Filter by Partner -->
+            <select id="filterPartner" class="form-control form-control-sm">
+              <option value="all">All Partners</option>
+            </select>
+
+            <!-- Filter by Type -->
+            <select id="filterType" class="form-control form-control-sm">
+              <option value="all">All Types</option>
+              <option value="debt">Money Owed</option>
+              <option value="payment">Payments Made</option>
+            </select>
+
+            <!-- Search description/ref -->
+            <div class="search-input-wrap">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="ledgerSearchInput" class="form-control form-control-sm" placeholder="Search entries, invoices...">
+            </div>
+          </div>
+        </div>
+
+        <!-- Ledger Table Container -->
+        <div class="table-container">
+          <table class="ledger-table" id="ledgerTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Partner / Wholesaler</th>
+                <th>Type</th>
+                <th>Category & Reference</th>
+                <th>Notes</th>
+                <th class="text-right">Amount</th>
+                <th class="text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="ledgerTableBody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+          <div id="ledgerEmptyState" class="empty-state" style="display:none;">
+            <div class="empty-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                <line x1="2" y1="10" x2="22" y2="10"></line>
+              </svg>
+            </div>
+            <h4>No transactions found</h4>
+            <p>Record money you owe or record a payment back to get started.</p>
+            <button class="btn btn-primary btn-sm mt-3" onclick="document.getElementById('openNewTransactionBtn').click()">
+              + Record First Entry
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-inner">
+        <div>
+          <strong>PaidOff</strong> — Zero cloud dependencies. All data is saved securely in your browser's LocalStorage.
+        </div>
+        <div class="footer-links">
+          <span>Ready for GitHub Pages</span>
+          <span>•</span>
+          <button id="printStatementBtn" class="btn-link">Print / Save Statement</button>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- MODAL: Add / Edit Partner -->
+  <div id="partnerModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="partnerModalTitle">Add Business Partner / Wholesaler</h3>
+        <button class="modal-close-btn" data-close-modal="partnerModal" aria-label="Close">&times;</button>
+      </div>
+      <form id="partnerForm">
+        <input type="hidden" id="partnerEditId">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="partnerName">Partner or Company Name <span class="required">*</span></label>
+            <input type="text" id="partnerName" class="form-control" placeholder="e.g. Apex Wholesale Dist., John Doe" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="partnerType">Category</label>
+              <select id="partnerType" class="form-control">
+                <option value="Wholesaler">Wholesaler</option>
+                <option value="Supplier">Supplier</option>
+                <option value="Business Partner">Business Partner</option>
+                <option value="Lender / Investor">Lender / Investor</option>
+                <option value="Contractor / Service">Contractor / Service</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="partnerPhone">Contact / Phone</label>
+              <input type="text" id="partnerPhone" class="form-control" placeholder="e.g. +1 555-0192 or email">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="partnerNotes">Notes / Terms</label>
+            <textarea id="partnerNotes" class="form-control" rows="2" placeholder="e.g. Net-30 payment agreement, warehouse account #998"></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="partnerModal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="savePartnerBtn">Save Partner</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Record Transaction (Debt or Payment) -->
+  <div id="transactionModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="transactionModalTitle">Record Ledger Entry</h3>
+        <button class="modal-close-btn" data-close-modal="transactionModal" aria-label="Close">&times;</button>
+      </div>
+      <form id="transactionForm">
+        <input type="hidden" id="transactionEditId">
+        
+        <div class="modal-body">
+          <!-- Type Selector: Owe vs Pay -->
+          <div class="form-group">
+            <label>Entry Type <span class="required">*</span></label>
+            <div class="type-toggle-group">
+              <label class="type-toggle-option type-debt">
+                <input type="radio" name="txType" value="debt" checked id="txTypeDebt">
+                <div class="toggle-card">
+                  <div class="toggle-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  </div>
+                  <div>
+                    <div class="toggle-title">I Owe Money</div>
+                    <div class="toggle-sub">New purchase, invoice, or borrowed amount</div>
+                  </div>
+                </div>
+              </label>
+
+              <label class="type-toggle-option type-payment">
+                <input type="radio" name="txType" value="payment" id="txTypePayment">
+                <div class="toggle-card">
+                  <div class="toggle-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  </div>
+                  <div>
+                    <div class="toggle-title">I Paid Back</div>
+                    <div class="toggle-sub">Deducts from outstanding balance</div>
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="txPartner">Partner / Wholesaler <span class="required">*</span></label>
+              <select id="txPartner" class="form-control" required>
+                <option value="">Select partner...</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="txDate">Date <span class="required">*</span></label>
+              <input type="date" id="txDate" class="form-control" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="txAmount">Amount ($) <span class="required">*</span></label>
+              <div class="currency-input-wrap">
+                <span class="currency-symbol">$</span>
+                <input type="number" id="txAmount" class="form-control" placeholder="0.00" step="0.01" min="0.01" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="txCategory">Category</label>
+              <select id="txCategory" class="form-control">
+                <option value="Inventory Purchase">Inventory Purchase</option>
+                <option value="Wholesale Batch">Wholesale Batch</option>
+                <option value="Loan / Advance">Loan / Advance</option>
+                <option value="Equipment / Supplies">Equipment / Supplies</option>
+                <option value="Repayment (Bank / Transfer)">Repayment (Bank / Transfer)</option>
+                <option value="Repayment (Cash)">Repayment (Cash)</option>
+                <option value="Repayment (Cheque)">Repayment (Cheque)</option>
+                <option value="Full Payoff">Full Payoff</option>
+                <option value="Adjustment / Credit">Adjustment / Credit</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="txReference">Reference / Invoice #</label>
+            <input type="text" id="txReference" class="form-control" placeholder="e.g. INV-2024-8819 or Check #402">
+          </div>
+
+          <div class="form-group">
+            <label for="txNotes">Notes & Details</label>
+            <textarea id="txNotes" class="form-control" rows="2" placeholder="e.g. Received 50 units of shipment A, wire transferred via Chase..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="transactionModal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveTransactionBtn">Save Entry</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification System -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
